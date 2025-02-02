@@ -1,5 +1,7 @@
 package org.apache.cordova.videoeditor;
 
+import static java.lang.Integer.parseInt;
+
 import java.io.*;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -120,8 +122,8 @@ public class VideoEditor extends CordovaPlugin {
         );
 
         final boolean deleteInputFile = options.optBoolean("deleteInputFile", false);
-        final int width = options.optInt("width", 0);
-        final int height = options.optInt("height", 0);
+        final int[] width = {options.optInt("width", 0)};
+        final int[] height = {options.optInt("height", 0)};
         final int fps = options.optInt("fps", 24);
         final int videoBitrate = options.optInt("videoBitrate", 1000000); // default to 1 megabit
         final long videoDuration = options.optLong("duration", 0) * 1000 * 1000;
@@ -236,11 +238,11 @@ public class VideoEditor extends CordovaPlugin {
                     String mmrOrientation = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
                     Log.d(TAG, "mmrOrientation: " + mmrOrientation); // 0, 90, 180, or 270
 
-                    float videoWidth = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
-                    float videoHeight = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+// Swap width and height if the video is rotated by 90 or 270 degrees
+
 
                     MediaTranscoder.getInstance().transcodeVideo(fin.getFD(), outputFilePath,
-                            new CustomAndroidFormatStrategy(videoBitrate, fps, width, height), listener, videoDuration);
+                            new CustomAndroidFormatStrategy(videoBitrate, fps, width[0], height[0]), listener, videoDuration);
 
                 } catch (Throwable e) {
                     Log.d(TAG, "transcode exception ", e);
@@ -431,7 +433,13 @@ public class VideoEditor extends CordovaPlugin {
         if (Build.VERSION.SDK_INT >= 17) {
             String mmrOrientation = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
             Log.d(TAG, "mmrOrientation: " + mmrOrientation); // 0, 90, 180, or 270
-
+            Log.d(TAG, "videoWidth/Height: " + videoWidth + videoHeight);
+            if (mmrOrientation != null && (Float.parseFloat(mmrOrientation) == 90 || Float.parseFloat(mmrOrientation) == 270)) {
+                Log.d(TAG, "mmrOrientation found rotated, swapping width/height");
+                float temp = videoWidth;
+                videoWidth = (int) videoHeight;
+                videoHeight = (int) temp;
+            }
             if (videoWidth < videoHeight) {
                 if (mmrOrientation.equals("0") || mmrOrientation.equals("180")) {
                     orientation = "portrait";
